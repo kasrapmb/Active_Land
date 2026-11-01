@@ -30,3 +30,13 @@ Database-backed catalog, parent OTP authentication, child profiles and age valid
 The frontend does not load third-party resources. Font currently uses system Tahoma/Arial; a locally hosted Persian font can follow.
 
 `tools/preview.py` serves only the UI when Django dependencies are unavailable; it is not an application server.
+
+## Database catalog and management
+
+Run `DJANGO_DEBUG=1 .venv/bin/python manage.py seed_catalog` after migrations. This adds initial classes once and preserves manager edits and intentionally deleted sessions on subsequent runs. The homepage and schedule dialogs read the database. Create individual staff accounts with `manage.py createsuperuser` for the site administrator; grant the center manager only catalog permissions through Django groups. Never share accounts or commit passwords.
+
+Run checks with `DJANGO_DEBUG=1 .venv/bin/python manage.py test catalog`.
+
+Confirmed business rules: capacity initially 15 per session, no discounts, age measured on registration day, ongoing enrollment, one missed session recoverable within the same month, further absences forfeited, transfers and price differences handled by support. Refund/cancellation rules remain unspecified. Billing period for mid-course enrollment and waiting-list invitation behavior await clarification. Age intervals currently use inclusive lower and exclusive upper birthdays: [12,24), [24,36), [36,48) months. The upper boundary at exactly 48 months should be confirmed before activating enrollment.
+
+Age validation is a tested domain helper, not a live registration endpoint yet. Capacity is configured but no reservation or payment flow exists yet. Django admin provides catalog management now; the custom operational dashboard remains outstanding.

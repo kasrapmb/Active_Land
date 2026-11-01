@@ -1,17 +1,12 @@
-const schedule = {
-  candy: {name: 'نقل و نبات', slots: ['شنبه · ۱۹ تا ۲۰', 'چهارشنبه · ۱۸ تا ۱۹']},
-  honey: {name: 'قند و عسل', slots: ['دوشنبه · ۱۶ تا ۱۷', 'سه‌شنبه · ۱۶ تا ۱۷']},
-  heart: {name: 'دردونه', slots: ['شنبه · ۱۸ تا ۱۹']},
-  sprout: {name: 'جوونه', slots: ['دوشنبه · ۱۷ تا ۱۸:۳۰']}
-};
+const schedule = JSON.parse(document.querySelector('#catalog-schedule').textContent);
 document.querySelectorAll('[data-age]').forEach(button => button.addEventListener('click', () => {
   document.querySelectorAll('[data-age]').forEach(item => {
     item.classList.toggle('selected', item === button);
     item.setAttribute('aria-pressed', String(item === button));
   });
   let count = 0;
-  document.querySelectorAll('[data-group]').forEach(card => {
-    card.hidden = button.dataset.age !== 'all' && card.dataset.group !== button.dataset.age;
+  document.querySelectorAll('[data-min-age]').forEach(card => {
+    card.hidden = button.dataset.age !== 'all' && !(Number(card.dataset.minAge) < (Number(button.dataset.age) + 1) * 12 && Number(card.dataset.maxAge) > Number(button.dataset.age) * 12);
     if (!card.hidden) count++;
   });
   document.querySelector('.filter-status').textContent = `${count.toLocaleString('fa-IR')} کلاس نمایش داده می‌شود`;
@@ -27,7 +22,7 @@ document.querySelectorAll('[data-class]').forEach(button => button.addEventListe
     const label = document.createElement('b');
     label.textContent = `سانس ${(index + 1).toLocaleString('fa-IR')}`;
     const time = document.createElement('span');
-    time.textContent = slot;
+    time.textContent = slot.replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
     row.append(label, time);
     list.append(row);
   });
