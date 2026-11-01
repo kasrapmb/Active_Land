@@ -167,3 +167,32 @@ def transfer(*,actor,booking_id,target_id,note):
     AuditEvent.objects.create(actor=actor,booking=item,action='transferred',detail=f'{source_id} -> {target_id}; {note}')
     notify_opening(next(row for row in locked if row.pk==source_id))
     return item
+
+@transaction.atomic
+def record_attendance(*, actor, subscription_id, day, status):
+    from catalog.models import OfficialHoliday
+    from .models import Absence, Attendance
+    require_operator(actor)
+    sub = Subscription.objects.select_for_update().select_related('session').get(pk=subscription_id)
+    if sub.cancelled_at or not sub.starts_on <= day < sub.expires_on:
+        raise ValidationError('تاریخ باید در بازه اعتبار اشتراک فعال باشد.')
+    if day > timezone.localdate():
+        raise ValidationError('حضور و غیاب روزهای آینده قابل ثبت نیست.')
+    if (day.weekday() + 2) % 7 != sub.session.weekday or OfficialHoliday.objects.filter(day=day).exists():
+        raise ValidationError('در این تاریخ، جلسه‌ای برای این سانس برگزار نمی‌شود.')
+    if status not in ('present', 'absent', 'clear'):
+        raise ValidationError('وضعیت نامعتبر است.')
+    if status in ('present', 'clear'):
+        absence = Absence.objects.filter(subscription=sub, missed_on=day).first()
+        if absence and absence.makeup_on:
+            raise ValidationError('برای این غیبت جبران ثبت شده؛ ابتدا وضعیت جبران را در مدیریت اصلاح کنید.')
+        Absence.objects.filter(subscription=sub, missed_on=day).delete()
+    if status in ('absent', 'clear'):
+        Attendance.objects.filter(subscription=sub, day=day).delete()
+    if status == 'present':
+        Attendance.objects.update_or_create(subscription=sub, day=day, defaults={'recorded_by': actor})
+    elif status == 'absent':
+        Absence.objects.update_or_create(subscription=sub, missed_on=day, defaults={'recorded_by': actor})
+    from django.contrib.admin.models import LogEntry, CHANGE
+    from django.contrib.contenttypes.models import ContentType
+    LogEntry.objects.create(user=actor, content_type=ContentType.objects.get_for_model(sub), object_id=str(sub.pk), object_repr=str(sub), action_flag=CHANGE, change_message=f'Attendance {day}: {status}')

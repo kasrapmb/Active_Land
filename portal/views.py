@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -86,3 +87,21 @@ def health(request):
     except Exception:
         return JsonResponse({'status':'unavailable'},status=503)
     return JsonResponse({'status':'ok'})
+
+
+@login_required
+def child_detail(request, pk):
+    from enrollment.management_views import child_context
+    child = get_object_or_404(Child.objects.select_related('parent__parentprofile'), pk=pk, parent=request.user)
+    return render(request, 'portal/child_detail.html', child_context(child))
+
+
+@login_required
+def child_edit(request, pk):
+    child = get_object_or_404(Child, pk=pk, parent=request.user)
+    form = ChildForm(request.POST or None, instance=child)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'مشخصات کودک ذخیره شد؛ اطلاعات رسیدهای قبلی تغییر نکرده است.')
+        return redirect('child-detail', pk=child.pk)
+    return render(request, 'portal/form.html', {'form': form, 'title': 'ویرایش مشخصات کودک', 'button': 'ذخیره مشخصات'})

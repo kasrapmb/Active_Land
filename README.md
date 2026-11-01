@@ -51,3 +51,29 @@ The last-seat race test runs only on PostgreSQL and is skipped on SQLite. Use th
 See [deployment and API guide](deploy/README.md). Run `process_enrollments` every minute; the supplied scheduler container does this. `seed_catalog` only inserts missing initial classes and never overwrites manager edits or recreates intentionally deleted sessions.
 
 The application has not been deployed to a public domain. Hosting/DNS, payment merchant approval, SMS account/template/sender, real-provider end-to-end checks, operator-entered holidays, encrypted off-host backups and a restore drill are required before release. Production SMS/online payment stay disabled without configuration. Provider callable interfaces permit changing vendors. The initial frontend-only `tools/preview.py` is retained for UI work and is not an application server.
+
+
+## Management workspace
+
+After staff authentication, open `/registration/management/`. Choose a class, then its session to see current children, temporary holds, open capacity, renewals due within three days, and the last subscription per child. Previous renewed months do not create duplicate overdue entries. Cancelled latest registrations are excluded from renewal follow-up.
+
+The session roster supports name/mobile search (including Persian digits), active/due/all filters and a Persian date selector. Managers can mark present/absent or clear mistakes on valid past/current lesson dates. Future dates, holidays and dates outside subscription validity are rejected. Attendance changes are audited. A missing attendance entry is explicitly unrecorded, never assumed present or absent.
+
+Lesson totals are calculated from the subscription interval and the session's current weekly schedule, excluding manager-entered official holidays. They are scheduled lessons, not a purchased fixed-session package. The roster separates scheduled, actual presence, absence, upcoming and past-unrecorded counts. Changes to the weekly schedule/holiday list update the planned count; recorded attendance remains separate.
+
+Child files show birth date, age, parent/emergency contact, instructor notes and subscription/lesson history. Managers need explicit child/profile read permissions. Parents can view/edit only their own children; historical receipt snapshots are preserved. Parent dashboard child cards link directly to the child file.
+
+The self-hosted Vazirmatn variable font (v33.003, SIL Open Font License) is used on public pages, the parent workspace and Django admin. Font files and license are in `catalog/static/catalog/fonts/`.
+
+### Updating on Windows PowerShell
+
+After obtaining the latest source, keep your existing `.venv` and local database. Run:
+
+```powershell
+$env:DJANGO_DEBUG = "1"
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py setup_roles
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Log in through `/admin/` with your site administrator account, then choose “میزکار مدیریت اکتیولند”. The homepage also shows a management shortcut for staff. Assign the manager group only to the authorized center manager.

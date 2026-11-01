@@ -75,3 +75,10 @@ class SMSAdapterTests(TestCase):
         with self.assertRaises(DeliveryUnavailable) as error:
             send_otp('09123456789','123456')
         self.assertNotIn('secret',str(error.exception))
+
+class LoginPageRegressionTests(TestCase):
+    @patch('portal.authentication.deliver_code')
+    def test_phone_form_reaches_verification_page(self, send):
+        response = self.client.post('/account/login/', {'phone': '09123456789'})
+        self.assertRedirects(response, '/account/verify/')
+        send.assert_called_once()

@@ -1,0 +1,16 @@
+{% extends 'portal/base.html' %}
+{% load catalog_format %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="مسیر صفحه"><a href="{% url 'management' %}">مدیریت</a><span>／</span><span>{{ course.name }}</span></nav>
+<header class="management-heading"><div><span class="eyebrow">مدیریت کلاس و سانس‌ها</span><h1>{{ course.icon }} {{ course.name }}</h1><p>{{ course.min_age_months|fa }} تا {{ course.max_age_months|fa }} ماه · هر جلسه {{ course.duration_minutes|fa }} دقیقه</p></div><a class="outline" href="{% url 'manual-registration' %}">ثبت‌نام دستی</a></header>
+<div class="management-grid">
+{% for card in sessions %}
+<a class="session-tile" href="{% url 'management-session' card.session.pk %}">
+<div class="tile-heading"><span class="badge">{% if card.session.active %}سانس فعال{% else %}غیرفعال{% endif %}</span><span aria-hidden="true">↗</span></div>
+<h2>{{ card.session.get_weekday_display }}</h2><p>{{ card.session.start_time|time:'H:i'|fa }} تا {{ card.session.end_time|time:'H:i'|fa }}</p>
+<div class="tile-metrics"><div><strong>{{ card.active|fa }}</strong><span>کودک دارای اعتبار</span></div><div><strong>{{ card.available|fa }}</strong><span>جای خالی از {{ card.session.capacity|fa }}</span></div></div>
+<div class="tile-alerts"><span class="status warning">{{ card.soon|fa }} نزدیک سررسید</span><span class="status danger">{{ card.due|fa }} نیازمند تمدید</span></div><p class="tile-link">فهرست کودکان و جلسات ←</p>
+</a>
+{% empty %}<section class="panel"><p>هنوز سانسی برای این کلاس تعریف نشده است.</p><a href="/admin/catalog/session/add/">افزودن سانس در مدیریت</a></section>{% endfor %}
+</div>
+{% endblock %}

@@ -79,6 +79,8 @@ class Absence(models.Model):
         sub=self.subscription
         if not sub.is_active_on(self.missed_on) or not session_occurs_on(sub.session,self.missed_on):
             raise ValidationError('تاریخ غیبت باید روز برگزاری کلاس در اعتبار اشتراک باشد.')
+        if Attendance.objects.filter(subscription=sub, day=self.missed_on).exists():
+            raise ValidationError('برای این تاریخ حضور ثبت شده است؛ ابتدا از صفحه سانس آن را اصلاح کنید.')
         if self.makeup_on:
             missed=jdatetime.date.fromgregorian(date=self.missed_on)
             makeup=jdatetime.date.fromgregorian(date=self.makeup_on)
@@ -86,3 +88,15 @@ class Absence(models.Model):
                 raise ValidationError('جبران باید بعد از غیبت و در همان ماه شمسی باشد.')
             if not sub.is_active_on(self.makeup_on) or not session_occurs_on(sub.session,self.makeup_on):
                 raise ValidationError('تاریخ جبران باید روز مجاز کلاس در اعتبار اشتراک باشد.')
+
+class Attendance(models.Model):
+    subscription = models.ForeignKey('catalog.Subscription', on_delete=models.PROTECT, verbose_name='اشتراک')
+    day = models.DateField('تاریخ حضور')
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, verbose_name='ثبت‌کننده')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-day']
+        verbose_name = 'حضور کودک'
+        verbose_name_plural = 'حضور کودکان'
+        constraints = [models.UniqueConstraint(fields=['subscription', 'day'], name='one_presence_per_subscription_day')]

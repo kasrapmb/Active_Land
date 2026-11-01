@@ -21,3 +21,20 @@ class ManualRegistrationForm(forms.Form):
     session = forms.ModelChoiceField(label='سانس',queryset=Session.objects.filter(active=True))
     reference = forms.CharField(label='شناسه رسید پرداخت کامل تأییدشده',max_length=120)
     age_override_reason = forms.CharField(label='دلیل استثنای سن (فقط مدیر سایت)',max_length=1000,required=False,widget=forms.Textarea)
+
+class JalaliDayField(forms.CharField):
+    def clean(self, value):
+        import jdatetime
+        value = super().clean(value)
+        try:
+            year, month, day = map(int, value.translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹', '0123456789')).split('/'))
+            if year < 1300 or year > 1500:
+                raise ValueError()
+            return jdatetime.date(year, month, day).togregorian()
+        except (ValueError, TypeError):
+            raise forms.ValidationError('تاریخ شمسی معتبر وارد کنید؛ مانند ۱۴۰۵/۰۸/۲۴.')
+
+
+class AttendanceForm(forms.Form):
+    day = JalaliDayField(label='تاریخ شمسی')
+    status = forms.ChoiceField(choices=[('present', 'حاضر'), ('absent', 'غایب'), ('clear', 'پاک‌کردن ثبت اشتباه')])

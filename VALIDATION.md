@@ -8,3 +8,11 @@
 - PostgreSQL dump restored successfully into a separate temporary database; four catalog classes verified. This does not establish encrypted off-host backup readiness or restoration of real customer data.
 - Payment and SMS adapters were tested using mocked provider responses. No real SMS or financial transaction was sent. Live credentials, account approvals and provider-specific acceptance tests remain required.
 - GitHub Actions configuration added for PostgreSQL tests, migration drift, static collection and JavaScript syntax. Remote workflow execution is not claimed unless observed separately.
+
+
+## Management workspace update
+
+- PostgreSQL: all 42 tests passed. SQLite: 41 passed; one PostgreSQL-only concurrency test skipped.
+- Added checks for class/session navigation, private child records, correct renewal boundaries, ignoring older renewed/cancelled periods, lesson counts excluding holidays, idempotent present/absent correction and rejection of future/non-session dates.
+- Chromium: management index, class view, roster, child file and Django admin at 1440/390/320 widths; local Vazirmatn font loaded, no horizontal overflow and no JavaScript errors. Saving attendance through the CSRF-protected browser form succeeded.
+- Fixed a missing settings import in the login view and added a successful OTP-form regression test.

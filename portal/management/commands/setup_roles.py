@@ -8,7 +8,7 @@ class Command(BaseCommand):
         allowed={
             'catalog':{'classtype':['view','add','change'],'session':['view','add','change'],'officialholiday':['view','add','change','delete'],'subscription':['view']},
             'portal':{'child':['view','add','change'],'parentprofile':['view','change']},
-            'enrollment':{'booking':['view','change'],'waitingentry':['view','change'],'notification':['view'],'auditevent':['view'],'gatewaypayment':['view'],'absence':['view','add','change']},
+            'enrollment':{'booking':['view','change'],'waitingentry':['view','change'],'notification':['view'],'auditevent':['view'],'gatewaypayment':['view'],'absence':['view','add','change'],'attendance':['view']},
         }
         ids=[]
         for app,models in allowed.items():

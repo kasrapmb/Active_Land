@@ -30,6 +30,11 @@ class ChildForm(forms.ModelForm):
         model = Child
         fields = ['full_name','birth_jalali','gender','attended_before','notes']
         widgets = {'notes':forms.Textarea(attrs={'rows':3})}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and self.instance.birth_date:
+            self.initial['birth_jalali'] = jdatetime.date.fromgregorian(date=self.instance.birth_date).strftime('%Y/%m/%d')
+
     def clean_birth_jalali(self):
         try:
             value = self.cleaned_data['birth_jalali'].translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹','0123456789'))

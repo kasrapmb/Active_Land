@@ -63,3 +63,10 @@ class AbsenceAdmin(admin.ModelAdmin):
 class GatewayAdmin(ReadOnlyAdmin):
     list_display=['booking','amount','needs_review','verified_at']
     list_filter=['needs_review']
+
+
+from .models import Attendance
+@admin.register(Attendance)
+class AttendanceAdmin(ReadOnlyAdmin):
+    list_display = ['subscription', 'day', 'recorded_by']
+    list_filter = ['day']

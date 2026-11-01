@@ -1,0 +1,2 @@
+@font-face{font-family:Vazirmatn;src:url("fonts/Vazirmatn.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+body,input,textarea,select,button,.module h2,.module caption,.inline-group h2{font-family:Vazirmatn,Tahoma,sans-serif}body{font-weight:400}h1,h2,h3,strong,th{font-weight:600}#header{background:#163652}a:link,a:visited{color:#a92e5b}#header a:link,#header a:visited{color:#fff}#branding h1{font-weight:600}.module{border-radius:10px;overflow:hidden}.submit-row input{border-radius:8px}

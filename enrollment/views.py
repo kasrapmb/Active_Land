@@ -115,7 +115,8 @@ def management(request):
     from .models import GatewayPayment,WaitingEntry
     subs=Subscription.objects.select_related('parent','session__class_type').order_by('-created_at')
     report=subs.values('session__class_type__name').annotate(total=Sum('paid_amount')).order_by('session__class_type__name')
-    return render(request,'enrollment/management.html',{'total':subs.aggregate(total=Sum('paid_amount'))['total'] or 0,'report':report,'subscriptions':subs[:100],'bookings':Booking.objects.select_related('child','session__class_type').order_by('-created_at')[:100],'review':GatewayPayment.objects.filter(needs_review=True).count(),'waiting':WaitingEntry.objects.filter(active=True).count()})
+    from .management_views import management_classes
+    return render(request,'enrollment/management.html',{'classes':management_classes(),'total':subs.aggregate(total=Sum('paid_amount'))['total'] or 0,'report':report,'subscriptions':subs[:100],'bookings':Booking.objects.select_related('child','session__class_type').order_by('-created_at')[:100],'review':GatewayPayment.objects.filter(needs_review=True).count(),'waiting':WaitingEntry.objects.filter(active=True).count()})
 
 @login_required
 @permission_required('catalog.view_subscription',raise_exception=True)
@@ -147,7 +148,7 @@ def manual_registration(request):
     from catalog.services import record_paid_month
     from django.db import IntegrityError
     if not request.user.is_staff: raise Http404
-    form=ManualRegistrationForm(request.POST or None)
+    form=ManualRegistrationForm(request.POST or None, initial={'child': request.GET.get('child'), 'session': request.GET.get('session')})
     if request.method=='POST' and form.is_valid():
         data=form.cleaned_data;child=data['child']
         try:

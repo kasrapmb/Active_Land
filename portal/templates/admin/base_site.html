@@ -1,0 +1,4 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'catalog/admin.css' %}">{% endblock %}
+{% block userlinks %}<a href="{% url 'management' %}">میزکار مدیریت اکتیولند</a> / {{ block.super }}{% endblock %}
