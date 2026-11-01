@@ -57,3 +57,52 @@ class CatalogTests(TestCase):
         user = get_user_model().objects.create_user(username='parent', password='test-only-password')
         self.client.force_login(user)
         self.assertEqual(self.client.get('/admin/catalog/classtype/').status_code,302)
+
+class MonthlyBillingTests(TestCase):
+    def test_same_persian_day_next_month(self):
+        import jdatetime
+        from .billing import next_month
+        start = jdatetime.date(1405,8,24).togregorian()
+        self.assertEqual(next_month(start), jdatetime.date(1405,9,24).togregorian())
+
+    def test_short_month_and_year_rollover(self):
+        import jdatetime
+        from .billing import next_month
+        self.assertEqual(next_month(jdatetime.date(1405,6,31).togregorian()), jdatetime.date(1405,7,30).togregorian())
+        self.assertEqual(next_month(jdatetime.date(1405,12,24).togregorian()), jdatetime.date(1406,1,24).togregorian())
+        result = jdatetime.date.fromgregorian(date=next_month(jdatetime.date(1405,11,30).togregorian()))
+        self.assertEqual((result.year,result.month,result.day),(1405,12,29))
+
+    def test_paid_month_dates_capacity_and_permission(self):
+        from unittest.mock import patch
+        from .services import record_paid_month
+        from .models import Subscription
+        from django.core.exceptions import ValidationError
+        call_command('seed_catalog', verbosity=0)
+        admin = get_user_model().objects.create_superuser(username='admin',password='test-only')
+        parent = get_user_model().objects.create_user(username='parent')
+        session = Session.objects.filter(class_type__slug='candy').first()
+        session.capacity = 1
+        session.save()
+        args = dict(parent=parent,child_name='کودک',birth_date=date(2024,6,1),session_id=session.pk,payment_reference='receipt-1',recorded_by=admin)
+        with patch('catalog.services.timezone.localdate',return_value=date(2026,1,1)):
+            with self.assertRaises(PermissionError):
+                record_paid_month(**{**args,'recorded_by':parent})
+            sub = record_paid_month(**args)
+            self.assertTrue(sub.is_active_on(sub.starts_on))
+            self.assertFalse(sub.is_active_on(sub.expires_on))
+            self.assertEqual(sub.paid_amount,1850000)
+            with self.assertRaises(ValidationError):
+                record_paid_month(**{**args,'payment_reference':'receipt-2'})
+        self.assertEqual(Subscription.objects.count(),1)
+
+    def test_only_scheduled_days_except_official_holidays(self):
+        from .services import session_occurs_on
+        from .models import OfficialHoliday
+        call_command('seed_catalog', verbosity=0)
+        session = Session.objects.get(class_type__slug='candy',weekday=0)
+        saturday = date(2026,1,3)
+        self.assertTrue(session_occurs_on(session,saturday))
+        self.assertFalse(session_occurs_on(session,date(2026,1,4)))
+        OfficialHoliday.objects.create(day=saturday,title='تعطیلی رسمی')
+        self.assertFalse(session_occurs_on(session,saturday))

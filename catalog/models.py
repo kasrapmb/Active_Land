@@ -65,3 +65,41 @@ class Session(models.Model):
         super().clean()
         if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError({'end_time': 'ساعت پایان باید بعد از شروع باشد.'})
+
+
+class Subscription(models.Model):
+    """One explicitly confirmed, paid month. No automatic debit or renewal."""
+    parent = models.ForeignKey('auth.User', on_delete=models.PROTECT, verbose_name='حساب والد')
+    child_name = models.CharField('نام کودک', max_length=150)
+    birth_date = models.DateField('تاریخ تولد')
+    session = models.ForeignKey(Session, on_delete=models.PROTECT, verbose_name='سانس')
+    starts_on = models.DateField('شروع اعتبار')
+    expires_on = models.DateField('سررسید تمدید')
+    paid_amount = models.PositiveIntegerField('مبلغ پرداخت‌شده به تومان')
+    payment_reference = models.CharField('شناسه پرداخت یا رسید دستی', max_length=120, unique=True)
+    recorded_by = models.ForeignKey('auth.User', on_delete=models.PROTECT, related_name='recorded_subscriptions', verbose_name='ثبت‌کننده')
+    created_at = models.DateTimeField('زمان ثبت', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'اشتراک ماهانه'
+        verbose_name_plural = 'اشتراک‌های ماهانه'
+        constraints = [models.CheckConstraint(condition=models.Q(expires_on__gt=models.F('starts_on')), name='valid_subscription_dates')]
+
+    def __str__(self):
+        return f'{self.child_name} — {self.session}'
+
+    def is_active_on(self, day):
+        return self.starts_on <= day < self.expires_on
+
+
+class OfficialHoliday(models.Model):
+    day = models.DateField('تاریخ تعطیلی رسمی', unique=True)
+    title = models.CharField('عنوان', max_length=150)
+
+    class Meta:
+        ordering = ['day']
+        verbose_name = 'تعطیلی رسمی'
+        verbose_name_plural = 'تعطیلات رسمی'
+
+    def __str__(self):
+        return self.title

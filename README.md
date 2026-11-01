@@ -40,3 +40,19 @@ Run checks with `DJANGO_DEBUG=1 .venv/bin/python manage.py test catalog`.
 Confirmed business rules: capacity initially 15 per session, no discounts, age measured on registration day, ongoing enrollment, one missed session recoverable within the same month, further absences forfeited, transfers and price differences handled by support. Refund/cancellation rules remain unspecified. Billing period for mid-course enrollment and waiting-list invitation behavior await clarification. Age intervals currently use inclusive lower and exclusive upper birthdays: [12,24), [24,36), [36,48) months. The upper boundary at exactly 48 months should be confirmed before activating enrollment.
 
 Age validation is a tested domain helper, not a live registration endpoint yet. Capacity is configured but no reservation or payment flow exists yet. Django admin provides catalog management now; the custom operational dashboard remains outstanding.
+
+## Rolling monthly subscriptions
+
+The full listed fee applies on any registration day. A paid month starts on the registration date and expires on the same Persian calendar day of the following month (exclusive). When that day does not exist, use the last day of the next month. There is no automatic renewal or debit. The next payment must be explicitly confirmed. Holidays do not shift the subscription expiry date; confirm any requested exception with management.
+
+`Subscription` records the paid fee and receipt immutably through the read-only admin. `OfficialHoliday` is editable by authorized staff; enter verified holidays explicitly. There is no automatic official-holiday feed yet. `session_occurs_on` excludes those dates from the weekly schedule.
+
+An authorized operator can record a **previously verified, full-fee offline payment** with:
+
+```sh
+DJANGO_DEBUG=1 .venv/bin/python manage.py record_paid_month \
+  --staff STAFF_USERNAME --parent PARENT_USERNAME --child 'نام کودک' \
+  --birth-date YYYY-MM-DD --session SESSION_ID --reference UNIQUE_RECEIPT
+```
+
+The birth date argument is Gregorian. No sample accounts or default passwords are created. The service checks staff permission, registration-day age, active catalog entries, capacity and unique payment reference; it locks the session row on PostgreSQL. SQLite is only for local development and does not demonstrate concurrency safety. PostgreSQL concurrency tests and payment reservations remain required before public enrollment. Current child identity is a name/date snapshot; normalized child profiles, duplicate-enrollment protection, renewal UI, absence tracking and waiting-list SMS are subsequent work. Do not expose this offline service as a gateway callback.
