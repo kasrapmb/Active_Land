@@ -9,7 +9,7 @@ if not SECRET_KEY:
     SECRET_KEY = 'local-development-only-not-for-production'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'catalog', 'portal', 'enrollment']
-MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']
+MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'whitenoise.middleware.WhiteNoiseMiddleware', 'portal.middleware.PrivatePages', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']
 ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS':[], 'APP_DIRS':True,'OPTIONS':{'context_processors':['django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]
 DATABASES = {'default': {'ENGINE':'django.db.backends.sqlite3','NAME':BASE_DIR / 'db.sqlite3'}}
@@ -33,3 +33,26 @@ LOCAL_SMS_ENABLED = DEBUG and os.environ.get('LOCAL_SMS_ENABLED', '0') == '1'
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+PAYMENT_BACKEND = os.environ.get('PAYMENT_BACKEND', '')
+PAYMENT_MERCHANT_ID = os.environ.get('PAYMENT_MERCHANT_ID', '')
+PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', 'http://localhost:8000' if DEBUG else '')
+
+STORAGES = {'default': {'BACKEND':'django.core.files.storage.FileSystemStorage'}, 'staticfiles': {'BACKEND':'whitenoise.storage.CompressedManifestStaticFilesStorage'}}
+if not DEBUG:
+    if not os.environ.get('POSTGRES_DB'):
+        raise RuntimeError('Production requires PostgreSQL configuration.')
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # Enable only behind the supplied reverse proxy, never on a public direct port.
+    if os.environ.get('TRUST_PROXY_HTTPS','0') == '1':
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    CSRF_TRUSTED_ORIGINS = [origin for origin in os.environ.get('CSRF_TRUSTED_ORIGINS','').split(',') if origin]
+
+SMS_OTP_SEND_FUNCTION = os.environ.get('SMS_OTP_SEND_FUNCTION', '')
+SMS_API_KEY = os.environ.get('SMS_API_KEY', '')
+SMS_OTP_TEMPLATE = os.environ.get('SMS_OTP_TEMPLATE', '')
+SMS_SENDER = os.environ.get('SMS_SENDER', '')
+
+TRUST_PROXY_CLIENT_IP = os.environ.get('TRUST_PROXY_HTTPS','0') == '1'

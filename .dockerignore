@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+.local-sms
+*.sqlite3
+__pycache__
+*.pyc
+staticfiles
