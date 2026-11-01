@@ -38,8 +38,11 @@ def consume_rate(key, limit=10):
     return True
 
 def deliver_code(phone, code):
+    otp_backend = getattr(settings,'SMS_OTP_SEND_FUNCTION','')
     backend = getattr(settings,'SMS_SEND_FUNCTION','')
-    if backend:
+    if otp_backend:
+        import_string(otp_backend)(phone,code)
+    elif backend:
         import_string(backend)(phone, f'کد ورود اکتیولند: {code}')
     elif settings.DEBUG and getattr(settings,'LOCAL_SMS_ENABLED',False):
         # Explicit local-only inbox, never an HTTP response or public log.

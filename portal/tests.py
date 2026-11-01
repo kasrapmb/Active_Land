@@ -59,3 +59,19 @@ class ParentTests(TestCase):
         self.client.force_login(user)
         self.assertEqual(self.client.get('/account/logout/').status_code,405)
         self.assertEqual(self.client.post('/account/logout/').status_code,302)
+
+class SMSAdapterTests(TestCase):
+    @override_settings(SMS_API_KEY='test-key',SMS_OTP_TEMPLATE='login')
+    @patch('portal.sms.urlopen')
+    def test_otp_uses_template_and_does_not_leak_provider_errors(self,send):
+        from .sms import send_otp
+        from .authentication import DeliveryUnavailable
+        send.return_value.__enter__.return_value.read.return_value=b'{"return":{"status":200}}'
+        send_otp('09123456789','123456')
+        request=send.call_args.args[0]
+        self.assertIn('/verify/lookup.json',request.full_url)
+        self.assertIn(b'template=login',request.data)
+        send.side_effect=RuntimeError('secret provider response')
+        with self.assertRaises(DeliveryUnavailable) as error:
+            send_otp('09123456789','123456')
+        self.assertNotIn('secret',str(error.exception))

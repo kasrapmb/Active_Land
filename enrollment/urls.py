@@ -1,3 +1,3 @@
 from django.urls import path
 from . import views
-urlpatterns = [path('session/<int:session_id>/',views.register,name='register'),path('<uuid:pk>/',views.booking,name='booking'),path('<uuid:pk>/offline-payment/',views.offline_payment,name='offline-payment'),path('<uuid:pk>/cancel/',views.cancel_booking,name='cancel-booking')]
+urlpatterns = [path('manual/',views.manual_registration,name='manual-registration'),path('management/',views.management,name='management'),path('export/',views.export,name='export-enrollments'),path('<uuid:pk>/transfer/',views.transfer_booking,name='transfer-booking'),path('<uuid:pk>/pay/',views.pay,name='pay'),path('<uuid:pk>/callback/',views.payment_callback,name='payment-callback'),path('session/<int:session_id>/',views.register,name='register'),path('<uuid:pk>/',views.booking,name='booking'),path('<uuid:pk>/offline-payment/',views.offline_payment,name='offline-payment'),path('<uuid:pk>/cancel/',views.cancel_booking,name='cancel-booking')]

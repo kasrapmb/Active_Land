@@ -8,7 +8,8 @@ from .authentication import DeliveryUnavailable, request_code, verify_code
 from .forms import ChildForm, CodeForm, PhoneForm, ProfileForm
 from .models import Child, ParentProfile
 from catalog.models import Subscription
-from enrollment.models import Booking
+from enrollment.models import Booking, WaitingEntry
+from django.utils import timezone
 
 def login(request):
     if request.user.is_authenticated:
@@ -16,7 +17,7 @@ def login(request):
     form = PhoneForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         try:
-            phone = request_code(form.cleaned_data['phone'],request.META.get('REMOTE_ADDR','unknown'))
+            phone = request_code(form.cleaned_data['phone'],(request.META.get('HTTP_X_FORWARDED_FOR','').split(',')[-1].strip() if settings.TRUST_PROXY_CLIENT_IP and request.META.get('HTTP_X_FORWARDED_FOR') else request.META.get('REMOTE_ADDR','unknown')))
         except ValidationError as error:
             form.add_error(None,error)
         except Exception:
@@ -49,7 +50,7 @@ def logout(request):
 
 @login_required
 def dashboard(request):
-    return render(request,'portal/dashboard.html',{'bookings':Booking.objects.filter(child__parent=request.user).select_related('child','session__class_type').order_by('-created_at'), 'children':request.user.children.all(),'subscriptions':Subscription.objects.filter(parent=request.user).select_related('session__class_type').order_by('-starts_on')})
+    return render(request,'portal/dashboard.html',{'today':timezone.localdate(),'waiting_entries':WaitingEntry.objects.filter(child__parent=request.user,active=True).select_related('child','session__class_type'),'bookings':Booking.objects.filter(child__parent=request.user).select_related('child','session__class_type').order_by('-created_at'), 'children':request.user.children.all(),'subscriptions':Subscription.objects.filter(parent=request.user).select_related('session__class_type').order_by('-starts_on')})
 
 @login_required
 def profile(request):
@@ -76,3 +77,12 @@ def child_add(request):
 def receipt(request,pk):
     item = get_object_or_404(Subscription.objects.select_related('session__class_type'),pk=pk,parent=request.user)
     return render(request,'portal/receipt.html',{'item':item})
+
+def health(request):
+    from django.db import connection
+    from django.http import JsonResponse
+    try:
+        with connection.cursor() as cursor: cursor.execute('SELECT 1')
+    except Exception:
+        return JsonResponse({'status':'unavailable'},status=503)
+    return JsonResponse({'status':'ok'})

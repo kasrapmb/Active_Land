@@ -1,58 +1,53 @@
 # اکتیولند
 
-Initial RTL, responsive homepage implementation and Django foundation. This is not yet a production registration system.
+Persian RTL registration application for ongoing mother-and-child classes. Django 5.2, PostgreSQL in production, responsive server-rendered frontend and session-authenticated JSON API.
 
-## Local development
-
-Python 3.12:
+## Development
 
 ```sh
 cd /workspace/Active_Land
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.lock
 DJANGO_DEBUG=1 .venv/bin/python manage.py migrate --noinput
-DJANGO_DEBUG=1 .venv/bin/python manage.py check
-DJANGO_DEBUG=1 .venv/bin/python manage.py runserver 127.0.0.1:8000 --noreload
+DJANGO_DEBUG=1 .venv/bin/python manage.py seed_catalog
+DJANGO_DEBUG=1 .venv/bin/python manage.py setup_roles
+DJANGO_DEBUG=1 LOCAL_SMS_ENABLED=1 .venv/bin/python manage.py runserver 127.0.0.1:8000 --noreload
 ```
 
-SQLite is the local default. Set POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST and POSTGRES_PORT to select PostgreSQL. PostgreSQL integration has not been validated yet. Production requires DJANGO_SECRET_KEY and explicit DJANGO_ALLOWED_HOSTS; never enable debug publicly. Production server, HTTPS, backup and deployment configuration remain to be implemented.
+Local-only SMS codes go to ignored owner-readable `.local-sms/PHONE.txt` files. This explicit debug option never activates in production. No default accounts or passwords are created. Use `manage.py createsuperuser` to create your private site administrator. Assign the restricted manager group to a separate staff account for the center manager.
 
-## Implemented
+SQLite is a development fallback. Set POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST and POSTGRES_PORT to use PostgreSQL. Production refuses to boot without PostgreSQL and a DJANGO_SECRET_KEY.
 
-- Homepage, CSS play illustration, four class cards, age filters and weekly schedule dialogs.
-- Responsive layouts, keyboard dialogs and reduced-motion support.
-- Django template rendering and built-in admin/auth migrations.
+## Capabilities
 
-## Remaining
+- Database-backed homepage, class/age filters, independent weekly sessions and registration forms.
+- Parent OTP login with hashed expiring single-use codes, rate limits and attempt limits; optional Kavenegar adapter.
+- Multi-child profiles with Persian date input, parent/contact information, private dashboard and payment receipts.
+- Rolling Persian-calendar-month subscriptions, full listed fee on any registration day, explicit renewal after expiry. A nonexistent next-month day uses that month's last day.
+- Ten-minute capacity reservations with PostgreSQL row locks, age/ownership checks and idempotent current hold retrieval.
+- Optional Zarinpal request/verify adapter with toman-to-rial conversion; repeated verification cannot create duplicate subscriptions. Late paid callbacks are recorded for support review without allocating an expired seat.
+- Staff verification of offline payments; transfer/cancellation operations with audit history and support-led price/refund handling.
+- Waiting list with first-waiter SMS outbox, expiry processing, renewal reminders and provider retries.
+- Persian management dashboard, Excel export, restricted manager roles, holiday and absence/makeup records.
+- JSON API under `/api/v1/`, CSRF-protected mutations, private-page cache protection.
+- Gunicorn, WhiteNoise and Docker/Caddy deployment configuration.
 
-Database-backed catalog, parent OTP authentication, child profiles and age validation, course enrollment, transactional capacity reservations, payments, SMS, parent dashboard, custom Persian management, waiting lists, discounts, financial reports and production infrastructure. Schedule data currently lives in the frontend and must be moved to the catalog database. No capacity availability or payment success is simulated. Business rules for cancellation, age boundaries, refunds and mid-course enrollment await confirmation.
+## Business rules
 
-The frontend does not load third-party resources. Font currently uses system Tahoma/Arial; a locally hosted Persian font can follow.
+Initial session capacity is 15, editable by the manager. Fees: 1,850,000 toman for نقل و نبات / قند و عسل / دردونه; 2,400,000 for جوونه. No discounts. Classes run continuously except explicitly entered official holidays. Holidays do not automatically extend the subscription. Age is checked on registration; implemented intervals are [12,24), [24,36), [36,48) months. Out-of-range children require offline coordination; only the site superuser can record a paid manual exception with a reason. No public bypass is exposed. Confirm the exact 48-month boundary with the operator before launch.
 
-`tools/preview.py` serves only the UI when Django dependencies are unavailable; it is not an application server.
+One missed session can be marked for makeup in the same Persian month and within subscription validity. Further absences cannot be redeemed. Support handles transfers and any price difference. Cancellation never automatically issues a refund. Waiting invitations do not reserve capacity; a nonresponding invited request can be closed by the manager after follow-up. An automatic invitation deadline has not been specified.
 
-## Database catalog and management
-
-Run `DJANGO_DEBUG=1 .venv/bin/python manage.py seed_catalog` after migrations. This adds initial classes once and preserves manager edits and intentionally deleted sessions on subsequent runs. The homepage and schedule dialogs read the database. Create individual staff accounts with `manage.py createsuperuser` for the site administrator; grant the center manager only catalog permissions through Django groups. Never share accounts or commit passwords.
-
-Run checks with `DJANGO_DEBUG=1 .venv/bin/python manage.py test catalog`.
-
-Confirmed business rules: capacity initially 15 per session, no discounts, age measured on registration day, ongoing enrollment, one missed session recoverable within the same month, further absences forfeited, transfers and price differences handled by support. Refund/cancellation rules remain unspecified. Billing period for mid-course enrollment and waiting-list invitation behavior await clarification. Age intervals currently use inclusive lower and exclusive upper birthdays: [12,24), [24,36), [36,48) months. The upper boundary at exactly 48 months should be confirmed before activating enrollment.
-
-Age validation is a tested domain helper, not a live registration endpoint yet. Capacity is configured but no reservation or payment flow exists yet. Django admin provides catalog management now; the custom operational dashboard remains outstanding.
-
-## Rolling monthly subscriptions
-
-The full listed fee applies on any registration day. A paid month starts on the registration date and expires on the same Persian calendar day of the following month (exclusive). When that day does not exist, use the last day of the next month. There is no automatic renewal or debit. The next payment must be explicitly confirmed. Holidays do not shift the subscription expiry date; confirm any requested exception with management.
-
-`Subscription` records the paid fee and receipt immutably through the read-only admin. `OfficialHoliday` is editable by authorized staff; enter verified holidays explicitly. There is no automatic official-holiday feed yet. `session_occurs_on` excludes those dates from the weekly schedule.
-
-An authorized operator can record a **previously verified, full-fee offline payment** with:
+## Tests
 
 ```sh
-DJANGO_DEBUG=1 .venv/bin/python manage.py record_paid_month \
-  --staff STAFF_USERNAME --parent PARENT_USERNAME --child 'نام کودک' \
-  --birth-date YYYY-MM-DD --session SESSION_ID --reference UNIQUE_RECEIPT
+DJANGO_DEBUG=1 .venv/bin/python manage.py test catalog portal enrollment
 ```
 
-The birth date argument is Gregorian. No sample accounts or default passwords are created. The service checks staff permission, registration-day age, active catalog entries, capacity and unique payment reference; it locks the session row on PostgreSQL. SQLite is only for local development and does not demonstrate concurrency safety. PostgreSQL concurrency tests and payment reservations remain required before public enrollment. Current child identity is a name/date snapshot; normalized child profiles, duplicate-enrollment protection, renewal UI, absence tracking and waiting-list SMS are subsequent work. Do not expose this offline service as a gateway callback.
+The last-seat race test runs only on PostgreSQL and is skipped on SQLite. Use the PostgreSQL environment variables above to execute the whole suite. End-to-end browser validation covers OTP through the private local inbox, parent details, child creation and booking at mobile/desktop widths. Provider tests use mocks; no live money or SMS is represented as tested.
+
+## Operations and remaining launch prerequisites
+
+See [deployment and API guide](deploy/README.md). Run `process_enrollments` every minute; the supplied scheduler container does this. `seed_catalog` only inserts missing initial classes and never overwrites manager edits or recreates intentionally deleted sessions.
+
+The application has not been deployed to a public domain. Hosting/DNS, payment merchant approval, SMS account/template/sender, real-provider end-to-end checks, operator-entered holidays, encrypted off-host backups and a restore drill are required before release. Production SMS/online payment stay disabled without configuration. Provider callable interfaces permit changing vendors. The initial frontend-only `tools/preview.py` is retained for UI work and is not an application server.

@@ -79,6 +79,8 @@ def confirm_offline(*,actor,booking_id,reference):
         return booking.subscription
     if booking.status != 'held' or booking.reserved_until <= timezone.now():
         raise ValidationError('رزرو منقضی یا لغو شده است؛ رزرو تازه ایجاد کنید.')
+    if booking.gateway_authority:
+        raise ValidationError('برای این رزرو پرداخت درگاه آغاز شده است؛ ابتدا وضعیت درگاه را پیگیری کنید.')
     if not reference.strip():
         raise ValidationError('شناسه رسید الزامی است.')
     start = timezone.localdate()
@@ -104,3 +106,64 @@ def cancel(*,actor,booking_id):
     booking.save(update_fields=['status'])
     AuditEvent.objects.create(actor=actor,action='cancelled-refund-needs-support',booking=booking)
     notify_opening(session)
+
+@transaction.atomic
+def start_gateway(*,actor,booking_id,callback_url):
+    from .gateway import backend
+    booking=Booking.objects.select_for_update().select_related('child').get(pk=booking_id,child__parent=actor)
+    if booking.status!='held' or booking.reserved_until<=timezone.now():
+        raise ValidationError('رزرو منقضی شده است؛ رزرو تازه ایجاد کنید.')
+    gateway=backend()
+    if not booking.gateway_authority:
+        booking.gateway_authority=gateway.request(booking,callback_url)
+        booking.save(update_fields=['gateway_authority'])
+    return gateway.url(booking.gateway_authority)
+
+@transaction.atomic
+def verify_gateway(*,booking_id,authority):
+    from .gateway import backend
+    from .models import GatewayPayment
+    session_id=Booking.objects.values_list('session_id',flat=True).get(pk=booking_id)
+    session=Session.objects.select_for_update().get(pk=session_id)
+    booking=Booking.objects.select_for_update().select_related('child').get(pk=booking_id)
+    if not booking.gateway_authority or authority!=booking.gateway_authority:
+        raise ValidationError('شناسه پرداخت نامعتبر است.')
+    existing=GatewayPayment.objects.filter(booking=booking).first()
+    if existing: return existing
+    reference=backend().verify(booking)
+    review=booking.status!='held' or booking.reserved_until<=timezone.now()
+    payment=GatewayPayment.objects.create(booking=booking,reference=reference,amount=booking.amount,needs_review=review)
+    booking.gateway_reference=reference
+    booking.save(update_fields=['gateway_reference'])
+    if not review:
+        start=timezone.localdate()
+        sub=Subscription.objects.create(parent=booking.child.parent,child=booking.child,child_name=booking.child.full_name,birth_date=booking.child.birth_date,session=session,starts_on=start,expires_on=next_month(start),paid_amount=booking.amount,payment_reference='gateway:'+reference,recorded_by=booking.child.parent)
+        booking.subscription,booking.status=sub,'paid'
+        booking.save(update_fields=['subscription','status'])
+        WaitingEntry.objects.filter(child=booking.child,session=session,active=True).update(active=False)
+        Notification.objects.get_or_create(deduplication_key=f'paid:{booking.pk}',defaults={'recipient':booking.child.parent,'message':'اکتیولند: پرداخت و ثبت‌نام شما تأیید شد. رسید در پنل والدین موجود است.'})
+    return payment
+
+@transaction.atomic
+def transfer(*,actor,booking_id,target_id,note):
+    require_operator(actor)
+    source_id=Booking.objects.values_list('session_id',flat=True).get(pk=booking_id)
+    locked=list(Session.objects.select_for_update().filter(pk__in=sorted({source_id,target_id})).order_by('pk'))
+    target=next((row for row in locked if row.pk==target_id),None)
+    if not target: raise ValidationError('سانس مقصد یافت نشد.')
+    item=Booking.objects.select_for_update().select_related('child').get(pk=booking_id)
+    if item.session_id!=source_id: raise ValidationError('سانس تغییر کرده است؛ دوباره تلاش کنید.')
+    if target_id==source_id: return item
+    if item.status!='paid' or not item.subscription.is_active_on(timezone.localdate()):
+        raise ValidationError('فقط اشتراک فعال قابل انتقال است.')
+    validate_child(item.child,target)
+    if active_count(target)>=target.capacity: raise ValidationError('سانس مقصد ظرفیت ندارد.')
+    if not note.strip(): raise ValidationError('توضیح هماهنگی تسویه با پشتیبانی الزامی است.')
+    if Subscription.objects.filter(child=item.child,session=target,cancelled_at__isnull=True,expires_on__gt=timezone.localdate()).exists():
+        raise ValidationError('کودک در سانس مقصد اشتراک معتبر دارد.')
+    Subscription.objects.filter(pk=item.subscription_id).update(session=target)
+    item.session=target
+    item.save(update_fields=['session'])
+    AuditEvent.objects.create(actor=actor,booking=item,action='transferred',detail=f'{source_id} -> {target_id}; {note}')
+    notify_opening(next(row for row in locked if row.pk==source_id))
+    return item

@@ -25,6 +25,20 @@ class ReadOnlyAdmin(admin.ModelAdmin):
 
 @admin.register(WaitingEntry)
 class WaitingAdmin(ReadOnlyAdmin):
+    actions=['close_requests']
+    def has_change_permission(self,request,obj=None):
+        return request.user.has_perm('enrollment.change_waitingentry')
+    @admin.action(description='بستن درخواست‌های انتخاب‌شده پس از پیگیری پشتیبانی')
+    def close_requests(self,request,queryset):
+        from django.db import transaction
+        from catalog.models import Session
+        from .services import notify_opening
+        with transaction.atomic():
+            sessions=list(Session.objects.select_for_update().filter(pk__in=queryset.values('session_id')).order_by('pk'))
+            for entry in queryset:
+                self.log_change(request,entry,'Waiting request closed by support')
+            queryset.update(active=False)
+            for session in sessions: notify_opening(session)
     list_display = ['child','session','created_at','notified_at','active']
     list_filter = ['session','active']
 
@@ -35,3 +49,17 @@ class NotificationAdmin(ReadOnlyAdmin):
 @admin.register(AuditEvent)
 class AuditAdmin(ReadOnlyAdmin):
     list_display = ['actor','action','booking','created_at']
+
+from .models import Absence,GatewayPayment
+@admin.register(Absence)
+class AbsenceAdmin(admin.ModelAdmin):
+    list_display=['subscription','missed_on','makeup_on','recorded_by']
+    exclude=['recorded_by']
+    def save_model(self,request,obj,form,change):
+        obj.recorded_by=request.user
+        super().save_model(request,obj,form,change)
+
+@admin.register(GatewayPayment)
+class GatewayAdmin(ReadOnlyAdmin):
+    list_display=['booking','amount','needs_review','verified_at']
+    list_filter=['needs_review']

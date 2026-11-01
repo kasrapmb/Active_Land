@@ -70,6 +70,7 @@ class Session(models.Model):
 class Subscription(models.Model):
     child = models.ForeignKey("portal.Child", on_delete=models.PROTECT, null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    age_override_reason = models.CharField("دلیل استثنای سنی مدیر سایت", max_length=1000, blank=True)
     """One explicitly confirmed, paid month. No automatic debit or renewal."""
     parent = models.ForeignKey('auth.User', on_delete=models.PROTECT, verbose_name='حساب والد')
     child_name = models.CharField('نام کودک', max_length=150)

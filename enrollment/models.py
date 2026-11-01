@@ -50,3 +50,39 @@ class AuditEvent(models.Model):
     class Meta:
         verbose_name = 'رویداد مدیریت'
         verbose_name_plural = 'سوابق عملیات'
+
+class GatewayPayment(models.Model):
+    booking = models.OneToOneField(Booking,on_delete=models.PROTECT)
+    reference = models.CharField(max_length=200,unique=True)
+    amount = models.PositiveIntegerField('مبلغ به تومان')
+    needs_review = models.BooleanField('نیازمند پیگیری پشتیبانی',default=False)
+    verified_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        verbose_name = 'پرداخت درگاه'
+        verbose_name_plural = 'پرداخت‌های درگاه'
+
+class Absence(models.Model):
+    subscription = models.ForeignKey('catalog.Subscription',on_delete=models.PROTECT)
+    missed_on = models.DateField('تاریخ غیبت')
+    makeup_on = models.DateField('تاریخ جبران',null=True,blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    class Meta:
+        verbose_name='غیبت'
+        verbose_name_plural='غیبت و جبران جلسه'
+        constraints=[models.UniqueConstraint(fields=['subscription','missed_on'],name='one_absence_per_date'),models.UniqueConstraint(fields=['subscription'],condition=models.Q(makeup_on__isnull=False),name='one_makeup_per_subscription')]
+    def clean(self):
+        super().clean()
+        from django.core.exceptions import ValidationError
+        from catalog.services import session_occurs_on
+        import jdatetime
+        if not self.subscription_id or not self.missed_on: return
+        sub=self.subscription
+        if not sub.is_active_on(self.missed_on) or not session_occurs_on(sub.session,self.missed_on):
+            raise ValidationError('تاریخ غیبت باید روز برگزاری کلاس در اعتبار اشتراک باشد.')
+        if self.makeup_on:
+            missed=jdatetime.date.fromgregorian(date=self.missed_on)
+            makeup=jdatetime.date.fromgregorian(date=self.makeup_on)
+            if self.makeup_on<=self.missed_on or (missed.year,missed.month)!=(makeup.year,makeup.month):
+                raise ValidationError('جبران باید بعد از غیبت و در همان ماه شمسی باشد.')
+            if not sub.is_active_on(self.makeup_on) or not session_occurs_on(sub.session,self.makeup_on):
+                raise ValidationError('تاریخ جبران باید روز مجاز کلاس در اعتبار اشتراک باشد.')

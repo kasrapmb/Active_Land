@@ -25,6 +25,12 @@ class Child(models.Model):
     def __str__(self):
         return self.full_name
 
+    @property
+    def age_months(self):
+        from django.utils import timezone
+        today=timezone.localdate()
+        return (today.year-self.birth_date.year)*12+today.month-self.birth_date.month-(today.day<self.birth_date.day)
+
 class LoginChallenge(models.Model):
     phone = models.CharField(max_length=11,unique=True)
     code_hash = models.CharField(max_length=128)
