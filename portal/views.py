@@ -8,6 +8,7 @@ from .authentication import DeliveryUnavailable, request_code, verify_code
 from .forms import ChildForm, CodeForm, PhoneForm, ProfileForm
 from .models import Child, ParentProfile
 from catalog.models import Subscription
+from enrollment.models import Booking
 
 def login(request):
     if request.user.is_authenticated:
@@ -48,7 +49,7 @@ def logout(request):
 
 @login_required
 def dashboard(request):
-    return render(request,'portal/dashboard.html',{'children':request.user.children.all(),'subscriptions':Subscription.objects.filter(parent=request.user).select_related('session__class_type').order_by('-starts_on')})
+    return render(request,'portal/dashboard.html',{'bookings':Booking.objects.filter(child__parent=request.user).select_related('child','session__class_type').order_by('-created_at'), 'children':request.user.children.all(),'subscriptions':Subscription.objects.filter(parent=request.user).select_related('session__class_type').order_by('-starts_on')})
 
 @login_required
 def profile(request):

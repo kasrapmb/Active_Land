@@ -68,6 +68,8 @@ class Session(models.Model):
 
 
 class Subscription(models.Model):
+    child = models.ForeignKey("portal.Child", on_delete=models.PROTECT, null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     """One explicitly confirmed, paid month. No automatic debit or renewal."""
     parent = models.ForeignKey('auth.User', on_delete=models.PROTECT, verbose_name='حساب والد')
     child_name = models.CharField('نام کودک', max_length=150)
@@ -89,7 +91,7 @@ class Subscription(models.Model):
         return f'{self.child_name} — {self.session}'
 
     def is_active_on(self, day):
-        return self.starts_on <= day < self.expires_on
+        return self.cancelled_at is None and self.starts_on <= day < self.expires_on
 
 
 class OfficialHoliday(models.Model):

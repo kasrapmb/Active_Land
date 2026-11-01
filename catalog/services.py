@@ -16,7 +16,8 @@ def record_paid_month(*, parent, child_name, birth_date, session_id, payment_ref
         raise ValidationError('ثبت‌نام این سانس فعال نیست.')
     if not session.class_type.accepts_birth_date(birth_date, start):
         raise ValidationError('سن کودک خارج از محدوده است؛ ثبت استثنا نیازمند هماهنگی جداگانه است.')
-    if Subscription.objects.filter(session=session, starts_on__lte=start, expires_on__gt=start).count() >= session.capacity:
+    from enrollment.services import active_count
+    if active_count(session) >= session.capacity:
         raise ValidationError('ظرفیت سانس تکمیل است.')
     if not child_name.strip() or not payment_reference.strip():
         raise ValidationError('نام کودک و شناسه پرداخت الزامی است.')

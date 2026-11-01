@@ -22,8 +22,12 @@ document.querySelectorAll('[data-class]').forEach(button => button.addEventListe
     const label = document.createElement('b');
     label.textContent = `سانس ${(index + 1).toLocaleString('fa-IR')}`;
     const time = document.createElement('span');
-    time.textContent = slot.replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
-    row.append(label, time);
+    time.textContent = slot.label.replace(/[0-9]/g, digit => '۰۱۲۳۴۵۶۷۸۹'[digit]);
+    const link = document.createElement('a');
+    link.className = 'outline';
+    link.href = slot.url;
+    link.textContent = 'انتخاب سانس';
+    row.append(label, time, link);
     list.append(row);
   });
   document.querySelector('#sessions').showModal();
