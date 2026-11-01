@@ -28,6 +28,7 @@ jobs:
       - run: pip install -r requirements.lock
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
-      - run: python manage.py test catalog portal enrollment
+      # Template tests use manifest-backed static URLs even with the debug env set.
       - run: python manage.py collectstatic --noinput
+      - run: python manage.py test catalog portal enrollment
       - run: node --check catalog/static/catalog/app.js

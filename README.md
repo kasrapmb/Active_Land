@@ -41,6 +41,7 @@ One missed session can be marked for makeup in the same Persian month and within
 ## Tests
 
 ```sh
+DJANGO_DEBUG=1 .venv/bin/python manage.py collectstatic --noinput
 DJANGO_DEBUG=1 .venv/bin/python manage.py test catalog portal enrollment
 ```
 
