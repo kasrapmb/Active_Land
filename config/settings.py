@@ -8,7 +8,7 @@ if not SECRET_KEY:
         raise RuntimeError('Set DJANGO_SECRET_KEY or enable DJANGO_DEBUG for local development.')
     SECRET_KEY = 'local-development-only-not-for-production'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'catalog']
+INSTALLED_APPS = ['django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'catalog', 'portal']
 MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']
 ROOT_URLCONF = 'config.urls'
 TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS':[], 'APP_DIRS':True,'OPTIONS':{'context_processors':['django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]
@@ -25,3 +25,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 WSGI_APPLICATION = 'config.wsgi.application'
 SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
+
+LOGIN_URL = '/account/login/'
+LOGIN_REDIRECT_URL = '/account/'
+SMS_SEND_FUNCTION = os.environ.get('SMS_SEND_FUNCTION', '')
+LOCAL_SMS_ENABLED = DEBUG and os.environ.get('LOCAL_SMS_ENABLED', '0') == '1'
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True

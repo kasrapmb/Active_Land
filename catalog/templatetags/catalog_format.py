@@ -6,3 +6,8 @@ def fa(value):
 @register.filter
 def toman(value):
     return fa(f'{value:,}'.replace(',', '٬'))
+
+@register.filter
+def jalali(value):
+    from catalog.billing import persian_date
+    return persian_date(value) if value else ''

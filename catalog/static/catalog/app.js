@@ -28,7 +28,7 @@ document.querySelectorAll('[data-class]').forEach(button => button.addEventListe
   });
   document.querySelector('#sessions').showModal();
 }));
-document.querySelector('[data-login]').addEventListener('click', () => document.querySelector('#login').showModal());
+document.querySelector('[data-login]')?.addEventListener('click', () => document.querySelector('#login').showModal());
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelector('.close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => { if (event.target === dialog) {
